@@ -1,7 +1,6 @@
 from api_client import APIClient
 
-# Instantiate the client
-client = APIClient()
+client = APIClient()  # -> calls http://localhost:5001 by default
 
 # Call Service 1
 response1 = client.call_service("service1", "Hello from client")

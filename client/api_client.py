@@ -1,25 +1,17 @@
 import requests
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 class APIClient:
     """
-    A Python client to interact with API Hub's microservices.
+    A Python client to interact with API Hub's microservices via the Gateway.
     """
     def __init__(self, gateway_url="http://localhost:5001"):
         self.gateway_url = gateway_url
     
     def call_service(self, service_name, input_data):
-        """
-        Call a specific service and send data to the `/process` endpoint.
-
-        :param service_name: Name of the service (e.g., "service1", "service2").
-        :param input_data: Dictionary with the input data.
-        :return: The service's response (JSON).
-        """
         url = f"{self.gateway_url}/route/{service_name}"
         try:
             response = requests.post(url, json={"input": input_data}, timeout=5)

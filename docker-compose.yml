@@ -3,41 +3,26 @@ version: '3.8'
 services:
   gateway:
     build: ./gateway
+    container_name: gateway
     ports:
-      - "5001:5000"
+      - "5001:5001"  # Host 5001 -> Container 5001
+    environment:
+      - DOCKER_MODE=true
+      - GATEWAY_PORT=5001
     depends_on:
       - service1
       - service2
-    networks:
-      - api_network
 
   service1:
-    build: ./services/service_template
+    build: ./services/service1
+    container_name: service1
     environment:
       - SERVICE_NAME=service1
-      - PORT=5001
-    networks:
-      - api_network
+      - PORT=5002
 
   service2:
-    build: ./services/service_template
+    build: ./services/service2
+    container_name: service2
     environment:
       - SERVICE_NAME=service2
-      - PORT=5002
-    networks:
-      - api_network
-
-  nginx:
-    image: nginx:latest
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-    ports:
-      - "80:80"
-    depends_on:
-      - gateway
-    networks:
-      - api_network
-
-networks:
-  api_network:
-    driver: bridge
+      - PORT=5003
