@@ -1,161 +1,170 @@
-# 🚀 API Hub - Flask Microservices with Docker
+# 🚀 API Hub - Flask Microservices
 
 ## 📌 Overview
-API Hub is a **Dockerized microservices framework** using **Flask** and **Nginx**. It provides a **single API gateway** to route requests to multiple Flask-based services.
-
-- **API Gateway:** Handles routing and error management.
-- **Microservices:** Each service processes requests independently.
-- **Scalability:** Easily add new services with minimal changes.
-- **Logging & Error Handling:** Integrated for better debugging.
-- **Dockerized & Modularized:** Simple deployment with Docker Compose.
+API Hub is a **Flask-based microservices framework** providing:
+- **API Gateway** for centralized routing and error handling
+- **Multiple Microservices** (service1, service2, etc.) each listening on dedicated ports
+- **Flexible Deployment**: Run locally on your machine or with Docker
+- **Logging & Error Handling** built in for better debugging
+- **Modular, Easy to Extend** architecture with a service template
 
 ---
 
 ## 📂 Project Structure
 ```
 api-hub/
-│── docker-compose.yml       # Orchestrates all services
-│── gateway/                 # API Gateway to route requests
+├── docker-compose.yml          # Orchestrates services in Docker
+├── start_local.py              # Launches gateway + services locally
+├── gateway/
 │   ├── gateway/
 │   │   ├── __init__.py
-│   │   ├── config.py        # Service registry & settings
-│   │   ├── routes.py        # API routing logic
-│   │   ├── logger.py        # Logging configuration
-│   ├── app.py               # Gateway entry point
-│   ├── Dockerfile           # Gateway containerization
-│   ├── requirements.txt
-│── services/                # Microservices directory
-│   ├── service_template/    # Template for new services
+│   │   ├── config.py           # Service registry & settings
+│   │   ├── routes.py           # API routing logic
+│   │   └── logger.py           # Logging configuration
+│   ├── app.py                  # Gateway entry point
+│   ├── Dockerfile
+│   └── requirements.txt
+├── services/
+│   ├── service_template/       # Template for new services
 │   │   ├── service/
 │   │   │   ├── __init__.py
-│   │   │   ├── config.py    # Service settings
-│   │   │   ├── routes.py    # Business logic
-│   │   │   ├── logger.py    # Service-specific logging
-│   │   ├── app.py           # Service entry point
+│   │   │   ├── config.py
+│   │   │   ├── routes.py
+│   │   │   └── logger.py
+│   │   ├── app.py
 │   │   ├── Dockerfile
-│   │   ├── requirements.txt
-│   ├── service1/            # Example service
+│   │   └── requirements.txt
+│   ├── service1/
+│   │   ├── service/
+│   │   ├── app.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
 │   ├── service2/
-│── client/                  # Python client to interact with services
-│   ├── api_client.py        # Reusable API client
-│   ├── example_usage.py     # Example script using the client
-│── nginx/                   # Reverse proxy settings
-│   ├── nginx.conf
+│       ├── service/
+│       ├── app.py
+│       ├── Dockerfile
+│       └── requirements.txt
+├── client/                     # Python client to interact with the gateway
+│   ├── api_client.py
+│   └── example_usage.py
+├── tests/
+│   ├── __init__.py
+│   └── test_integration.py     # Pytest suite (runs local & docker tests)
+└── setup_pyenv.py              # Pyenv-based setup script (optional)
 ```
 
 ---
 
-## ⚙️ How to Run
-Ensure you have **Docker & Docker Compose** installed.
+## ⚙️ Running the API Hub
 
-### 1️⃣ Clone the Repository
-```sh
-git clone https://github.com/your-repo/api-hub.git
-cd api-hub
-```
+### 1️⃣ Local Mode
+1. **Install dependencies** (Flask, requests, etc.). For example:
+   ```sh
+   pip install flask requests flask-cors
+   ```
+2. **Start all services** (gateway + microservices):
+   ```sh
+   python start_local.py
+   ```
+3. **Gateway** will run at [http://localhost:5001](http://localhost:5001)  
+   - `service1` → [http://localhost:5002](http://localhost:5002)  
+   - `service2` → [http://localhost:5003](http://localhost:5003)
 
-### 2️⃣ Build and Run Containers
-```sh
-docker-compose up --build
-```
+### 2️⃣ Docker Mode
+1. **Build & Run** everything:
+   ```sh
+   docker compose up --build
+   ```
+2. **Gateway** mapped to [http://localhost:5001](http://localhost:5001)  
+   - `service1` runs in Docker at `service1:5002`  
+   - `service2` runs in Docker at `service2:5003`
 
-### 3️⃣ Test API Requests
-Using `curl` or Postman:
+### 3️⃣ Testing the Gateway
+Either in **local** or **docker** mode, you can test with `curl` or Postman:
 
-- **Service 1**
+- **service1**:
   ```sh
-  curl -X POST http://localhost/route/service1 -H "Content-Type: application/json" -d '{"input": "hello"}'
+  curl -X POST http://localhost:5001/route/service1 -H "Content-Type: application/json" -d '{"input": "hello"}'
   ```
-
-- **Service 2**
+- **service2**:
   ```sh
-  curl -X POST http://localhost/route/service2 -H "Content-Type: application/json" -d '{"input": "world"}'
+  curl -X POST http://localhost:5001/route/service2 -H "Content-Type: application/json" -d '{"input": "world"}'
   ```
 
 ---
 
-## 🆕 How to Add a New Service
-1️⃣ **Copy the Template**
-```sh
-cp -r services/service_template services/service3
-```
-
-2️⃣ **Update `docker-compose.yml`**
-Add a new service block:
-```yaml
-  service3:
-    build: ./services/service_template
-    environment:
-      - SERVICE_NAME=service3
-      - PORT=5003
-    networks:
-      - api_network
-```
-
-3️⃣ **Modify `config.py` in the New Service**
-```python
-SERVICE_NAME = "service3"
-PORT = 5003
-```
-
-4️⃣ **Modify `routes.py` to Implement Logic**
-```python
-@bp.route('/process', methods=['POST'])
-def process():
-    data = request.json
-    result = {"service": SERVICE_NAME, "output": data.get("input", "").lower()}
-    return jsonify(result)
-```
-
-5️⃣ **Restart Docker Compose**
-```sh
-docker-compose up --build
-```
-
-🎉 **Your new service is live at:**  
-```sh
-curl -X POST http://localhost/route/service3 -H "Content-Type: application/json" -d '{"input": "TEST"}'
-```
+## 🛠 Adding a New Service
+1. **Copy the Template**
+   ```sh
+   cp -r services/service_template services/service3
+   ```
+2. **Adjust the Port & Name**
+   - In `services/service3/service/config.py`:
+     ```python
+     SERVICE_NAME = "service3"
+     PORT = 5004  # for example
+     ```
+3. **Docker Setup** (if you want to run it in Docker). Add a block in `docker-compose.yml`:
+   ```yaml
+   service3:
+     build: ./services/service3
+     environment:
+       - SERVICE_NAME=service3
+       - PORT=5004
+   ```
+4. **Local Setup**  
+   If running locally, ensure `start_local.py` starts it:
+   ```python
+   {
+     "name": "service3",
+     "path": "services/service3",
+     "port": 5004,
+     "env_vars": {
+       "SERVICE_NAME": "service3",
+       "PORT": "5004"
+     }
+   },
+   ```
+5. **Restart** (local or Docker). Your new service is now available at:
+   ```sh
+   # local
+   curl -X POST http://localhost:5001/route/service3 -H "Content-Type: application/json" -d '{"input":"TEST"}'
+   # docker
+   curl -X POST http://localhost:5001/route/service3 -H "Content-Type: application/json" -d '{"input":"TEST"}'
+   ```
 
 ---
 
 ## 🖥️ Python Client
+
 ### 📌 Overview
-The Python client allows you to **interact with any microservice** through the API gateway.  
-It simplifies sending requests without using `curl` or Postman.
+A lightweight Python client makes it easy to call any service via the gateway. By default, it points to `http://localhost:5001`.
 
 ### 📂 **Client Structure**
 ```
 client/
-│── api_client.py        # Reusable Python client
-│── example_usage.py     # Example script using the client
+├── __init__.py
+├── api_client.py
+└── example_usage.py
 ```
 
 ### 📝 **API Client**
-📌 **`client/api_client.py`**
+
 ```python
 import requests
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 class APIClient:
     """
-    A Python client to interact with API Hub's microservices.
+    A Python client to interact with the API Hub's microservices.
     """
-    def __init__(self, gateway_url="http://localhost:5000"):
+    def __init__(self, gateway_url="http://localhost:5001"):
         self.gateway_url = gateway_url
-    
-    def call_service(self, service_name, input_data):
-        """
-        Call a specific service and send data to the `/process` endpoint.
 
-        :param service_name: Name of the service (e.g., "service1", "service2").
-        :param input_data: Dictionary with the input data.
-        :return: The service's response (JSON).
-        """
+    def call_service(self, service_name, input_data):
         url = f"{self.gateway_url}/route/{service_name}"
         try:
             response = requests.post(url, json={"input": input_data}, timeout=5)
@@ -168,58 +177,62 @@ class APIClient:
 ```
 
 ### 🎯 **Example Usage**
-📌 **`client/example_usage.py`**
 ```python
+# client/example_usage.py
 from api_client import APIClient
 
-# Instantiate the client
-client = APIClient()
+client = APIClient()  # => http://localhost:5001 by default
 
-# Call Service 1
-response1 = client.call_service("service1", "Hello from client")
-print("Service 1 Response:", response1)
+res1 = client.call_service("service1", "Hello from client")
+print("Service 1 Response:", res1)
 
-# Call Service 2
-response2 = client.call_service("service2", "Another test input")
-print("Service 2 Response:", response2)
+res2 = client.call_service("service2", "Another test")
+print("Service 2 Response:", res2)
 ```
-
-### 🚀 **How to Use the Client**
-1️⃣ **Install Dependencies**  
-If you don't have `requests`, install it:
-```sh
-pip install requests
-```
-
-2️⃣ **Run the API Hub**  
-Start your Docker services:
-```sh
-docker-compose up --build
-```
-
-3️⃣ **Test the Client**
-Run the example script:
+**Run**:
 ```sh
 python client/example_usage.py
 ```
+---
 
-📌 Expected Output:
+## 🧪 Running Integration Tests
+We use **pytest** to automatically test **both local & Docker** environments in one sweep:
+
+1. **Install pytest**:
+   ```sh
+   pip install pytest
+   ```
+2. **From the project root**, run:
+   ```sh
+   pytest tests/test_integration.py -v
+   ```
+3. **What happens**:
+   - Pytest starts the **local** environment (`python start_local.py`)  
+   - Runs test calls to the gateway  
+   - Tears it down  
+   - Then spins up **Docker** (`docker compose up -d`)  
+   - Runs the same calls  
+   - Finally `docker compose down`
+
+You’ll see output like:
 ```
-INFO - Success: {'service': 'service1', 'output': 'HELLO FROM CLIENT'}
-Service 1 Response: {'service': 'service1', 'output': 'HELLO FROM CLIENT'}
-INFO - Success: {'service': 'service2', 'output': 'ANOTHER TEST INPUT'}
-Service 2 Response: {'service': 'service2', 'output': 'ANOTHER TEST INPUT'}
+test_integration.py::test_service1[local] PASSED
+test_integration.py::test_service2[local] PASSED
+test_integration.py::test_unknown_service[local] PASSED
+test_integration.py::test_service1[docker] PASSED
+test_integration.py::test_service2[docker] PASSED
+test_integration.py::test_unknown_service[docker] PASSED
 ```
 
 ---
 
 ## 🛠 Best Practices
-✅ **Use `logging` for debugging** instead of `print()`.  
-✅ **Keep microservices independent** – avoid cross-service dependencies.  
-✅ **Use environment variables (`config.py`)** for easy configuration.  
-✅ **Follow RESTful API design** for better scalability.  
-✅ **Keep the API stateless** – store data externally if needed (e.g., databases, Redis).  
-✅ **Use Nginx for rate limiting** and load balancing when scaling up.  
+- **Use logging** (`logger`) for debugging instead of prints.
+- **Avoid cross-service dependencies**; keep each microservice standalone.
+- **Use environment variables** to configure ports and modes (`DOCKER_MODE=true`).
+- **Stateless Services**: persist data externally if needed.
+- **Use Nginx** (or any reverse proxy) for load balancing or rate limiting at scale.
+- **Add more tests** in `tests/` to cover edge cases, performance, or new microservices.
 
 ---
 
@@ -229,6 +242,7 @@ This project is open-source under the **MIT License**.
 ---
 
 ## 📬 Contact
-👨‍💻 **Author:** Robinson Garcia 
-📧 **Email:** rlsgarcia@icloud.com
-🔗 **GitHub:** https://github.com/RobinsonGarcia
+- **Author:** Robinson Garcia  
+- **Email:** rlsgarcia@icloud.com  
+- **GitHub:** [RobinsonGarcia](https://github.com/RobinsonGarcia)
+~~~markdown
