@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  gateway:
+    build: ./gateway
+    ports:
+      - "5001:5000"
+    depends_on:
+      - service1
+      - service2
+    networks:
+      - api_network
+
+  service1:
+    build: ./services/service_template
+    environment:
+      - SERVICE_NAME=service1
+      - PORT=5001
+    networks:
+      - api_network
+
+  service2:
+    build: ./services/service_template
+    environment:
+      - SERVICE_NAME=service2
+      - PORT=5002
+    networks:
+      - api_network
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+    networks:
+      - api_network
+
+networks:
+  api_network:
+    driver: bridge
