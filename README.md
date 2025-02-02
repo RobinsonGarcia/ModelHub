@@ -1,266 +1,310 @@
-# 🚀 API Hub - Flask Microservices
+# API Hub - Flask Microservices Framework
 
-## 📌 Overview
-API Hub is a **Flask-based microservices framework** providing:
-- **API Gateway** for centralized routing and error handling
-- **Multiple Microservices** (service1, service2, etc.) each listening on dedicated ports
-- **Flexible Deployment**: Run locally on your machine or with Docker
-- **Logging & Error Handling** built in for better debugging
-- **Modular, Easy to Extend** architecture with a service template
+Welcome to **API Hub** – a Flask-based microservices framework that provides a centralized API gateway to route requests to multiple microservices. This project supports both local and Docker deployments through a unified configuration system.
 
 ---
 
-## 📂 Project Structure
+## Project Structure
+
 ```
 api-hub/
-├── docker-compose.yml          # Orchestrates services in Docker
-├── start_local.py              # Launches gateway + services locally
-├── gateway/
-│   ├── gateway/
-│   │   ├── __init__.py
-│   │   ├── config.py           # Service registry & settings
-│   │   ├── routes.py           # API routing logic
-│   │   └── logger.py           # Logging configuration
-│   ├── app.py                  # Gateway entry point
-│   ├── Dockerfile
-│   └── requirements.txt
-├── services/
-│   ├── service_template/       # Template for new services
-│   │   ├── service/
-│   │   │   ├── __init__.py
-│   │   │   ├── config.py
-│   │   │   ├── routes.py
-│   │   │   └── logger.py
-│   │   ├── app.py
-│   │   ├── Dockerfile
-│   │   └── requirements.txt
-│   ├── service1/
-│   │   ├── service/
-│   │   ├── app.py
-│   │   ├── Dockerfile
-│   │   └── requirements.txt
-│   ├── service2/
-│       ├── service/
-│       ├── app.py
-│       ├── Dockerfile
-│       └── requirements.txt
-├── client/                     # Python client to interact with the gateway
-│   ├── api_client.py
-│   └── example_usage.py
-├── tests/
+├── config.py                    # Unified configuration (loads .env)
+├── docker-compose.yml           # Docker Compose configuration
+├── setup_pyenv.py               # Pyenv-based setup script (auto-configured from .env & config.py)
+├── start_local.py               # Script to start the gateway and all services locally
+├── client/
 │   ├── __init__.py
-│   └── test_integration.py     # Pytest suite (runs local & docker tests)
-└── setup_pyenv.py              # Pyenv-based setup script (optional)
+│   ├── api_client.py            # Python client to interact with the API Gateway
+│   └── example_usage.py         # Example usage of the API client
+├── gateway/
+│   ├── app.py                   # Gateway entry point
+│   └── gateway/
+│       ├── __init__.py
+│       ├── config.py            # Gateway configuration (imports from config.py)
+│       ├── logger.py            # Logging configuration for the gateway
+│       └── routes.py            # API routing logic for the gateway
+└── services/
+    ├── service1/
+    │   ├── app.py               # Service 1 entry point
+    │   └── service/
+    │       ├── __init__.py
+    │       ├── config.py        # Service 1 configuration (wraps config.py)
+    │       ├── logger.py        # Logging configuration for service 1
+    │       └── routes.py        # Service 1 request processing
+    ├── service2/                # Similar structure as service1
+    ├── service_template/        # Template for adding new services
+    └── service5/                # **New Service as a Git Submodule Example**
+        ├── submodule_name       # Git submodule containing extra functionality
+        ├── app.py               # Service 5 entry point
+        └── service/
+            ├── __init__.py
+            ├── config.py        # Service 5 configuration (wraps config.py)
+            ├── logger.py        # Logging configuration for service 5
+            └── routes.py        # Service 5 routes that use the submodule
 ```
 
 ---
 
-## ⚙️ Running the API Hub
+## Getting Started
 
-### 1️⃣ Local Mode
-1. **Install dependencies** (Flask, requests, etc.). For example:
-   ```sh
-   pip install flask requests flask-cors
+### Prerequisites
+
+- **Python 3.9+** (managed with [Pyenv](https://github.com/pyenv/pyenv))
+- **Docker** (for Docker mode)
+- **Git** (for managing Git submodules)
+
+### Environment Setup
+
+Create a `.env` file in the project root with at least the following variables:
+
+```ini
+# Global settings
+DATA_DIR=./data
+LOG_FILE=./data/app.log
+
+# Gateway configuration
+DOCKER_MODE=false
+GATEWAY_PORT=5001
+GATEWAY_LOG_LEVEL=INFO
+
+# Define the list of microservices (comma-separated)
+SERVICES=service1,service2,service5
+
+# Service-specific configuration
+SERVICE1_NAME=service1
+SERVICE1_PORT=5002
+SERVICE1_LOG_LEVEL=INFO
+
+SERVICE2_NAME=service2
+SERVICE2_PORT=5003
+SERVICE2_LOG_LEVEL=INFO
+
+SERVICE5_NAME=service5
+SERVICE5_PORT=5005
+SERVICE5_LOG_LEVEL=INFO
+```
+
+---
+
+## Running the Project
+
+### Local Mode
+
+1. **Set Up Virtual Environments & Install Dependencies**
+
+   Run the setup script which creates virtual environments and installs dependencies based on your configuration:
+
+   ```bash
+   python setup_pyenv.py
    ```
-2. **Start all services** (gateway + microservices):
-   ```sh
+
+2. **Start the Services Locally**
+
+   Launch the API Hub (gateway and microservices) using:
+
+   ```bash
    python start_local.py
    ```
-3. **Gateway** will run at [http://localhost:5001](http://localhost:5001)  
-   - `service1` → [http://localhost:5002](http://localhost:5002)  
-   - `service2` → [http://localhost:5003](http://localhost:5003)
 
-### 2️⃣ Docker Mode
-1. **Build & Run** everything:
-   ```sh
+   This script reads the configuration from `config.py` (overriding `DOCKER_MODE` to false), creates shared data directories, and starts each service on its configured port.
+
+3. **Test the API**
+
+   Use the provided client:
+
+   ```bash
+   python client/example_usage.py
+   ```
+
+   You can also use `curl` or Postman to send POST requests to endpoints like `http://localhost:5001/route/service1`.
+
+### Docker Mode
+
+1. **Build and Run with Docker Compose**
+
+   Ensure your `.env` file has `DOCKER_MODE=true` (or override it) and run:
+
+   ```bash
    docker compose up --build
    ```
-2. **Gateway** mapped to [http://localhost:5001](http://localhost:5001)  
-   - `service1` runs in Docker at `service1:5002`  
-   - `service2` runs in Docker at `service2:5003`
 
-### 3️⃣ Testing the Gateway
-Either in **local** or **docker** mode, you can test with `curl` or Postman:
+2. **Access the API**
 
-- **service1**:
-  ```sh
-  curl -X POST http://localhost:5001/route/service1 -H "Content-Type: application/json" -d '{"input": "hello"}'
-  ```
-- **service2**:
-  ```sh
-  curl -X POST http://localhost:5001/route/service2 -H "Content-Type: application/json" -d '{"input": "world"}'
-  ```
+   The gateway is mapped to port 5001 on your host, and internal routing uses container hostnames.
+
+3. **Stop the Containers**
+
+   ```bash
+   docker compose down
+   ```
 
 ---
 
-## 🛠 Adding a New Service
-1. **Copy the Template**
-   ```sh
-   cp -r services/service_template services/service3
+## Running Tests
+
+Execute integration tests using Pytest from the project root:
+
+```bash
+pytest tests/test_integration.py -v
+```
+
+These tests automatically start the environment, send requests through the API client, and then tear down the environment.
+
+---
+
+### Adding a Service as a Git Submodule
+
+In this scenario, you want to add a new service (**service5**) whose code is maintained as a Git submodule. The submodule is located at the root of the `service5` directory and contains extra functionality that must be called from within the service routes. **Note:** We assume you do **not** want to add or modify any files (such as an `__init__.py`) inside the submodule folder.
+
+#### Service5 Directory Structure
+
+After adding the submodule, your directory structure should look like this:
+
+```
+services/
+└── service5/
+    ├── submodule_name       # Git submodule containing extra functionality
+    ├── app.py               # Service 5 entry point
+    └── service/
+        ├── __init__.py
+        ├── config.py        # Service 5 configuration (wraps config.py)
+        ├── logger.py        # Logging configuration for service 5
+        └── routes.py        # Service 5 routes that call functions from the submodule
+```
+
+#### Step-by-Step Instructions
+
+1. **Add the Git Submodule**
+
+   In your project root, add the submodule into the `service5` directory:
+   
+   ```bash
+   git submodule add https://github.com/username/submodule_repo.git services/service5/submodule_name
+   git submodule update --init --recursive
    ```
-2. **Adjust the Port & Name**
-   - In `services/service3/service/config.py`:
-     ```python
-     SERVICE_NAME = "service3"
-     PORT = 5004  # for example
-     ```
-3. **Docker Setup** (if you want to run it in Docker). Add a block in `docker-compose.yml`:
-   ```yaml
-   service3:
-     build: ./services/service3
-     environment:
-       - SERVICE_NAME=service3
-       - PORT=5004
+   
+   This command clones the external repository into `services/service5/submodule_name` without modifying its contents.
+
+2. **Update the .env File**
+
+   Add configuration for service5 in your `.env` file:
+   
+   ```ini
+   SERVICE5_NAME=service5
+   SERVICE5_PORT=5005
+   SERVICE5_LOG_LEVEL=INFO
    ```
-4. **Local Setup**  
-   If running locally, ensure `start_local.py` starts it:
+   
+   Also, update the `SERVICES` variable to include the new service:
+   
+   ```ini
+   SERVICES=service1,service2,service5
+   ```
+
+3. **Configure Service5**
+
+   In `services/service5/service/config.py`, import the unified configuration from `config.py` and load service5-specific settings:
+   
    ```python
-   {
-     "name": "service3",
-     "path": "services/service3",
-     "port": 5004,
-     "env_vars": {
-       "SERVICE_NAME": "service3",
-       "PORT": "5004"
-     }
-   },
-   ```
-5. **Restart** (local or Docker). Your new service is now available at:
-   ```sh
-   # local
-   curl -X POST http://localhost:5001/route/service3 -H "Content-Type: application/json" -d '{"input":"TEST"}'
-   # docker
-   curl -X POST http://localhost:5001/route/service3 -H "Content-Type: application/json" -d '{"input":"TEST"}'
+   # services/service5/service/config.py
+   from config import CONFIG
+
+   service_cfg = CONFIG["SERVICE_CONFIG"].get("service5", {})
+   SERVICE_NAME = service_cfg.get("name", "service5")
+   PORT = service_cfg.get("port", 5005)  # default fallback if not set in .env
+   LOG_LEVEL = service_cfg.get("log_level", "INFO")
+   DATA_DIR = CONFIG["DATA_DIR"]
    ```
 
-## Global Configuration & Shared Storage
+4. **Import the Submodule Without Modifying It**
 
-The API Hub now uses a centralized configuration file (`app_config.py`) to:
-- Set up global parameters (such as the shared data directory and logging settings).
-- Create a global storage folder (by default, `./data` on the host) and subdirectories for each service.
-- Pass these configuration values to all services and the gateway.
+   Since you do **not** want to add an `__init__.py` file to the submodule, you can add its path to `sys.path` in your service’s routes file. In `services/service5/service/routes.py`, do the following:
+   
+   ```python
+   # services/service5/service/routes.py
+   import sys
+   import os
+   from flask import Blueprint, request, jsonify
+   from service.logger import logger
+   from service.config import SERVICE_NAME
 
-### How It Works
+   # Dynamically add the submodule folder to sys.path
+   # Compute the absolute path to the submodule folder
+   current_dir = os.path.dirname(os.path.abspath(__file__))
+   submodule_path = os.path.join(current_dir, "..", "submodule_name")
+   if submodule_path not in sys.path:
+       sys.path.insert(0, submodule_path)
 
-- **Local Mode:**  
-  The `start_local.py` script imports `app_config.py` and calls `ensure_data_dirs()` to create the shared data folder and subfolders for each service (e.g., `data/gateway`, `data/service1`, etc.). The `DATA_DIR` environment variable is then passed to all services.
+   # Now import a function from the submodule.
+   # For example, assume the submodule exposes a function called process_extra_data in extra.py.
+   from extra import process_extra_data
 
-- **Docker Mode:**  
-  The Docker Compose file maps a host folder (`./data`) as a shared volume to `/app/data` in all containers. Each container uses the `DATA_DIR` environment variable (set to `/app/data`) to access this shared storage.
+   bp = Blueprint('service', __name__)
 
-- **Logging:**  
-  You can configure logging to write to files within the shared storage folder by setting the `LOG_FILE` (or using the provided defaults). This allows you to centralize log output for easier monitoring.
-  
----
-
-## 🖥️ Python Client
-
-### 📌 Overview
-A lightweight Python client makes it easy to call any service via the gateway. By default, it points to `http://localhost:5001`.
-
-### 📂 **Client Structure**
-```
-client/
-├── __init__.py
-├── api_client.py
-└── example_usage.py
-```
-
-### 📝 **API Client**
-
-```python
-import requests
-import logging
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger(__name__)
-
-class APIClient:
-    """
-    A Python client to interact with the API Hub's microservices.
-    """
-    def __init__(self, gateway_url="http://localhost:5001"):
-        self.gateway_url = gateway_url
-
-    def call_service(self, service_name, input_data):
-        url = f"{self.gateway_url}/route/{service_name}"
-        try:
-            response = requests.post(url, json={"input": input_data}, timeout=5)
-            response.raise_for_status()
-            logger.info(f"Success: {response.json()}")
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to connect to {service_name}: {e}")
-            return {"error": "Service unavailable"}
-```
-
-### 🎯 **Example Usage**
-```python
-# client/example_usage.py
-from api_client import APIClient
-
-client = APIClient()  # => http://localhost:5001 by default
-
-res1 = client.call_service("service1", "Hello from client")
-print("Service 1 Response:", res1)
-
-res2 = client.call_service("service2", "Another test")
-print("Service 2 Response:", res2)
-```
-**Run**:
-```sh
-python client/example_usage.py
-```
----
-
-## 🧪 Running Integration Tests
-We use **pytest** to automatically test **both local & Docker** environments in one sweep:
-
-1. **Install pytest**:
-   ```sh
-   pip install pytest
+   @bp.route('/process', methods=['POST'])
+   def process():
+       try:
+           data = request.json
+           # Call the submodule's function to process the input.
+           extra_output = process_extra_data(data.get("input", ""))
+           result = {"service": SERVICE_NAME, "output": extra_output}
+           logger.info(f"Processed request with submodule: {data}")
+           return jsonify(result)
+       except Exception as e:
+           logger.error(f"Processing error: {str(e)}")
+           return jsonify({"error": "Internal server error"}), 500
    ```
-2. **From the project root**, run:
-   ```sh
-   pytest tests/test_integration.py -v
+
+   **Explanation:**
+   
+   - The code calculates the absolute path to the submodule folder relative to the current file.
+   - It then inserts that path at the beginning of `sys.path` so that Python can import the submodule even if it lacks an `__init__.py`.
+   - Finally, it imports the desired function (in this example, `process_extra_data` from the module `extra` within the submodule) and uses it in the route.
+
+5. **Run the Service**
+
+   Run the setup and start scripts as usual:
+   
+   ```bash
+   python setup_pyenv.py
+   python start_local.py
    ```
-3. **What happens**:
-   - Pytest starts the **local** environment (`python start_local.py`)  
-   - Runs test calls to the gateway  
-   - Tears it down  
-   - Then spins up **Docker** (`docker compose up -d`)  
-   - Runs the same calls  
-   - Finally `docker compose down`
-
-You’ll see output like:
-```
-test_integration.py::test_service1[local] PASSED
-test_integration.py::test_service2[local] PASSED
-test_integration.py::test_unknown_service[local] PASSED
-test_integration.py::test_service1[docker] PASSED
-test_integration.py::test_service2[docker] PASSED
-test_integration.py::test_unknown_service[docker] PASSED
-```
+   
+   Then test with:
+   
+   ```bash
+   python client/example_usage.py
+   ```
+   
+   You should see that **service5** is now included and its route correctly calls the functionality from the submodule.
 
 ---
 
-## 🛠 Best Practices
-- **Use logging** (`logger`) for debugging instead of prints.
-- **Avoid cross-service dependencies**; keep each microservice standalone.
-- **Use environment variables** to configure ports and modes (`DOCKER_MODE=true`).
-- **Stateless Services**: persist data externally if needed.
-- **Use Nginx** (or any reverse proxy) for load balancing or rate limiting at scale.
-- **Add more tests** in `tests/` to cover edge cases, performance, or new microservices.
+## Workflow and Best Practices
+
+- **Unified Configuration:**  
+  All settings are centralized in `config.py` and overridden via the `.env` file. To modify a service’s configuration, update the `.env` file and re-run the setup and start scripts.
+
+- **Adding New Services:**  
+  To add a new service, simply:
+  1. Add its name to the `SERVICES` variable in `.env`.
+  2. Provide any service‑specific configuration (like `SERVICE5_NAME`, `SERVICE5_PORT`, etc.).
+  3. If the service uses a Git submodule, add the submodule (as shown above) without modifying its files.
+  4. Duplicate the service template (or use the Git submodule approach) and adjust its routes, configuration, and logging as needed.
+
+- **Importing Submodules Without Modification:**  
+  By dynamically adding the submodule path to `sys.path`, you avoid having to add an `__init__.py` file to the submodule. This keeps the submodule completely untouched while still making its functions available for import.
 
 ---
 
-## 📜 License
-This project is open-source under the **MIT License**.
+## License
+
+This project is open-source under the MIT License.
 
 ---
 
-## 📬 Contact
-- **Author:** Robinson Garcia  
-- **Email:** rlsgarcia@icloud.com  
-- **GitHub:** [RobinsonGarcia](https://github.com/RobinsonGarcia)
-~~~markdown
+## Contact
+
+For questions or contributions, please contact [Your Name](mailto:your.email@example.com) or visit [GitHub](https://github.com/YourUsername).
+
+Happy coding!
