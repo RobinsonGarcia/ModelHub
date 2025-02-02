@@ -1,21 +1,28 @@
 import os
 
-# If DOCKER_MODE is true, route calls to Docker hostnames
+# Determine if we're in Docker mode.
 DOCKER_MODE = os.getenv("DOCKER_MODE", "false").lower() == "true"
-
-if DOCKER_MODE:
-    SERVICES = {
-        "service1": "http://service1:5002/process",
-        "service2": "http://service2:5003/process",
-    }
-else:
-    # Local
-    SERVICES = {
-        "service1": "http://localhost:5002/process",
-        "service2": "http://localhost:5003/process",
-    }
-
-# Gateway port (default 5001) - override with GATEWAY_PORT env if needed
-GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", 5001))
-
+GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", "5001"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+DATA_DIR = os.getenv("DATA_DIR", "/app/data")  # or some default
+
+# Get the list of service names from the environment.
+services_list = os.getenv("SERVICES", "service1,service2").split(',')
+# Clean up whitespace and filter out empty names.
+services_list = [s.strip() for s in services_list if s.strip()]
+
+# Build a configuration dictionary: For each service, look up its port.
+service_config = {}
+for service in services_list:
+    # Expect the port to be defined as SERVICE1_PORT, SERVICE2_PORT, etc.
+    port = int(os.getenv(f"{service.upper()}_PORT", "5000"))
+    service_config[service] = port
+
+# Build the SERVICES dictionary based on the mode.
+if DOCKER_MODE:
+    SERVICES = {name: f"http://{name}:{port}/process" for name, port in service_config.items()}
+else:
+    SERVICES = {name: f"http://localhost:{port}/process" for name, port in service_config.items()}
+
+# For debugging purposes:
+print("Gateway SERVICES configuration:", SERVICES)

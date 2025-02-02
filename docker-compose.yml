@@ -5,24 +5,41 @@ services:
     build: ./gateway
     container_name: gateway
     ports:
-      - "5001:5001"  # Host 5001 -> Container 5001
-    environment:
-      - DOCKER_MODE=true
-      - GATEWAY_PORT=5001
+      - "${GATEWAY_PORT:-5001}:5001"
+    env_file:
+      - .env
     depends_on:
       - service1
       - service2
+    volumes:
+      - shared-data:/app/data
+    # (Optional) You could add a healthcheck for the gateway itself here
 
   service1:
     build: ./services/service1
     container_name: service1
-    environment:
-      - SERVICE_NAME=service1
-      - PORT=5002
+    env_file:
+      - .env
+    volumes:
+      - shared-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${SERVICE1_PORT}/process"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   service2:
     build: ./services/service2
     container_name: service2
-    environment:
-      - SERVICE_NAME=service2
-      - PORT=5003
+    env_file:
+      - .env
+    volumes:
+      - shared-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${SERVICE2_PORT}/process"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  shared-data:

@@ -133,6 +133,24 @@ Either in **local** or **docker** mode, you can test with `curl` or Postman:
    curl -X POST http://localhost:5001/route/service3 -H "Content-Type: application/json" -d '{"input":"TEST"}'
    ```
 
+## Global Configuration & Shared Storage
+
+The API Hub now uses a centralized configuration file (`app_config.py`) to:
+- Set up global parameters (such as the shared data directory and logging settings).
+- Create a global storage folder (by default, `./data` on the host) and subdirectories for each service.
+- Pass these configuration values to all services and the gateway.
+
+### How It Works
+
+- **Local Mode:**  
+  The `start_local.py` script imports `app_config.py` and calls `ensure_data_dirs()` to create the shared data folder and subfolders for each service (e.g., `data/gateway`, `data/service1`, etc.). The `DATA_DIR` environment variable is then passed to all services.
+
+- **Docker Mode:**  
+  The Docker Compose file maps a host folder (`./data`) as a shared volume to `/app/data` in all containers. Each container uses the `DATA_DIR` environment variable (set to `/app/data`) to access this shared storage.
+
+- **Logging:**  
+  You can configure logging to write to files within the shared storage folder by setting the `LOG_FILE` (or using the provided defaults). This allows you to centralize log output for easier monitoring.
+  
 ---
 
 ## 🖥️ Python Client

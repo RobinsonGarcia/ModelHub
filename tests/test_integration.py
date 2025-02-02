@@ -10,64 +10,50 @@ import pytest
 from client.api_client import APIClient
 
 # Provide up to 2 minutes for environment spin-up
-MAX_WAIT = 30
+MAX_WAIT = 5
 
 @pytest.fixture(params=["local", "docker"])
 def environment(request):
-    """
-    A pytest fixture that:
-      1. Starts the environment (local or docker)
-      2. Waits for the gateway to be ready
-      3. Yields for the tests
-      4. Tears down the environment
-
-    We do this for each test parameter: "local" and "docker".
-    """
-
     mode = request.param
     if mode == "local":
         print("\n=== Starting LOCAL environment... ===")
         proc = subprocess.Popen(
-            [sys.executable, "start_local.py"],
+            [os.sys.executable, "start_local.py"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
         )
-        # Wait for gateway on port 5001
         wait_for_gateway(port=5001)
         yield mode
         print("\n=== Tearing down LOCAL environment... ===")
-        # Send SIGINT to gracefully stop services
         proc.send_signal(signal.SIGINT)
         proc.wait()
-
     elif mode == "docker":
         print("\n=== Starting DOCKER environment... ===")
-        # Bring up Docker in detached mode
-        subprocess.run(["docker compose", "up", "-d", "--build"], check=True)
-        # Wait for gateway on port 5001
+        # Using Docker Compose V2 (separate arguments)
+        subprocess.run(["docker", "compose", "up", "-d", "--build"], check=True)
         wait_for_gateway(port=5001)
         yield mode
         print("\n=== Tearing down DOCKER environment... ===")
-        subprocess.run(["docker compose", "down"], check=True)
+        subprocess.run(["docker", "compose", "down"], check=True)
 
 
 def wait_for_gateway(port):
     """
-    Repeatedly tries GET /health or / on localhost:<port> to verify the gateway is up.
+    Repeatedly calls the gateway endpoint until a valid response is received.
     Times out after MAX_WAIT seconds if not responding.
     """
     start_time = time.time()
     while True:
         try:
-            # We'll assume /route/service1 or / might respond
             url = f"http://localhost:{port}/route/service1"
             resp = requests.post(url, json={"input": "test"}, timeout=3)
-            if resp.status_code != 403:  # 403 is a weird blockade, let's allow 200 or 404
-                # If 200 or 404 -> gateway is responding, so we consider it 'ready'
+            # Only consider it ready if the response contains a "service" key
+            data = resp.json()
+            if "service" in data or resp.status_code in (404, 200):
                 print(f"Gateway ready (response={resp.status_code})")
                 return
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.RequestException:
             pass
 
         if time.time() - start_time > MAX_WAIT:
