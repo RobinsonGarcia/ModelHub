@@ -5,120 +5,78 @@ import sys
 import os
 import signal
 from typing import List, Dict
-from dotenv import load_dotenv
-from app_config import DATA_DIR, ensure_data_dirs
-
-# 1) Load our .env environment variables
-load_dotenv()
+from config import CONFIG, DATA_DIR, ensure_data_dirs
 
 def build_gateway_dict() -> Dict[str, any]:
-    """Build a config dict for the gateway from environment vars."""
-    gateway_port = int(os.getenv("GATEWAY_PORT", "5001"))
+    """Return gateway configuration for local startup."""
     return {
         "name": "gateway",
         "path": "gateway",
-        "port": gateway_port,
+        "port": CONFIG["GATEWAY_PORT"],
         "env_vars": {
-            "GATEWAY_PORT": str(gateway_port),
-            "DOCKER_MODE": os.getenv("DOCKER_MODE", "false"),
-            # You could also pass LOG_LEVEL here if you want:
-            # "LOG_LEVEL": os.getenv("LOG_LEVEL", "INFO"),
+            "GATEWAY_PORT": str(CONFIG["GATEWAY_PORT"]),
+            "DOCKER_MODE": "false",  # For local mode, force false.
         },
     }
 
-def build_service_dict(service_name: str) -> Dict[str, any]:
-    """Build a config dict for each microservice from environment vars."""
-    uppercase = service_name.upper()       # e.g. "SERVICE1"
-    service_port = int(os.getenv(f"{uppercase}_PORT", "5000"))
-    service_name_env = os.getenv(f"{uppercase}_NAME", service_name)
+def build_service_dict(service: str) -> Dict[str, any]:
+    """Return microservice configuration for local startup."""
+    cfg = CONFIG["SERVICE_CONFIG"].get(service, {})
     return {
-        "name": service_name,
-        "path": f"services/{service_name}",  # default path
-        "port": service_port,
+        "name": service,
+        "path": f"services/{service}",
+        "port": cfg.get("port", 5000),
         "env_vars": {
-            f"{uppercase}_NAME": service_name_env,    # e.g. SERVICE1_NAME=service1
-            f"{uppercase}_PORT": str(service_port),   # e.g. SERVICE1_PORT=5002
-            # You could also pass LOG_LEVEL if needed
-            # "LOG_LEVEL": os.getenv("LOG_LEVEL", "INFO"),
+            f"{service.upper()}_NAME": cfg.get("name", service),
+            f"{service.upper()}_PORT": str(cfg.get("port", 5000)),
         },
     }
 
-def load_services_from_env() -> List[Dict[str, any]]:
-    """Read the SERVICES list from .env and build config for each microservice + gateway."""
-    services_env = os.getenv("SERVICES", "")  # e.g. "service1,service2"
-    service_names = [s.strip() for s in services_env.split(",") if s.strip()]
-
-    # Start with the gateway
-    all_services = [build_gateway_dict()]
-
-    # Then add each microservice
-    for svc_name in service_names:
-        svc_dict = build_service_dict(svc_name)
-        all_services.append(svc_dict)
-
-    return all_services
-
+def load_services_from_config() -> List[Dict[str, any]]:
+    """Build a list of service dictionaries for startup: gateway then microservices."""
+    services = [build_gateway_dict()]
+    for service in CONFIG["SERVICES_LIST"]:
+        services.append(build_service_dict(service))
+    return services
 
 def start_service(service: Dict[str, any]) -> subprocess.Popen:
-    """Start an individual service as a subprocess."""
+    """Start a service subprocess."""
     env = os.environ.copy()
-    env.update(service["env_vars"])           # merge in the special env vars
-    env["DATA_DIR"] = DATA_DIR               # always pass the shared data dir
+    env.update(service["env_vars"])
+    env["DATA_DIR"] = DATA_DIR
+    env["DOCKER_MODE"] = "false"  # Force local mode
+    # Add project root to PYTHONPATH so that "from config import CONFIG" works.
+    env["PYTHONPATH"] = CONFIG["BASE_DIR"]
     print(f"🚀 Starting {service['name']} on port {service['port']} (local)...")
-
     proc = subprocess.Popen(
         [sys.executable, "app.py"],
         cwd=service["path"],
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
+        stdout=None,   # let output go to the console
+        stderr=None,
+        text=True,
     )
-    time.sleep(2)  # short delay to give it time to bind the port
+    time.sleep(2)  # Give the process time to start up
     return proc
 
-
 def stop_services(*args) -> None:
-    """Stops all running services gracefully."""
     print("\n⛔ Stopping all services...")
     for p in processes:
         p.terminate()
     sys.exit(0)
 
-
 if __name__ == "__main__":
     print("🚀 Starting API Hub Locally...\n")
-
-    # 2) Build the list of services dynamically from .env
-    SERVICES = load_services_from_env()
-    # E.g. SERVICES = [
-    #   {
-    #     "name": "gateway",
-    #     "path": "gateway",
-    #     "port": 5001,
-    #     "env_vars": {...},
-    #   },
-    #   {
-    #     "name": "service1",
-    #     "path": "services/service1",
-    #     "port": 5002,
-    #     "env_vars": {...},
-    #   },
-    #   ...
-    # ]
-
-    # 3) Ensure data directories exist for each
+    SERVICES = load_services_from_config()
+    # Ensure data directories exist for each service
     ensure_data_dirs([s["name"] for s in SERVICES])
-
+    
     processes = []
     for svc in SERVICES:
         proc = start_service(svc)
         processes.append(proc)
-
-    # 4) Listen for CTRL+C to shut down gracefully
+    
     signal.signal(signal.SIGINT, stop_services)
     print("\n✅ All services are running locally. Press CTRL+C to stop.")
-
-    # 5) Keep the main thread alive
     while True:
         time.sleep(1)

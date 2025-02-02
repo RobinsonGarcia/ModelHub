@@ -1,7 +1,11 @@
-import os
+# services/service1/service/config.py
+from config import CONFIG
 
-SERVICE_NAME = os.getenv("SERVICE2_NAME", "service2")
-PORT = int(os.getenv("SERVICE2_PORT", 5003))
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-# Shared storage folder available to the service
-DATA_DIR = os.getenv("DATA_DIR", "/app/data")
+# Look up configuration for service1 (use a default if not defined)
+service_cfg = CONFIG["SERVICE_CONFIG"].get("service2", {})
+SERVICE_NAME = service_cfg.get("name", "service2")
+PORT = service_cfg.get("port", 5003)  # default fallback if not set in .env
+LOG_LEVEL = service_cfg.get("log_level", "INFO")
+
+# Use the global DATA_DIR from config
+DATA_DIR = CONFIG["DATA_DIR"]
