@@ -12,8 +12,8 @@ services:
       - service1
       - service2
     volumes:
-      - shared-data:/app/data
-    # (Optional) You could add a healthcheck for the gateway itself here
+      - ./shared-data:/app/data  # Shared volume for persistent storage
+      - ./config.py:/app/config.py 
 
   service1:
     build: ./services/service1
@@ -21,12 +21,8 @@ services:
     env_file:
       - .env
     volumes:
-      - shared-data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${SERVICE1_PORT}/process"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./shared-data:/app/data
+      - ./config.py:/app/config.py  
 
   service2:
     build: ./services/service2
@@ -34,12 +30,18 @@ services:
     env_file:
       - .env
     volumes:
-      - shared-data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${SERVICE2_PORT}/process"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./shared-data:/app/data
+      - ./config.py:/app/config.py  
+
+  service3:
+    build: ./services/service3
+    container_name: service3
+    env_file:
+      - .env
+    volumes:
+      - ./shared-data:/app/data  # <-- Shared directory for images and logs
+      - ./config.py:/app/config.py  
 
 volumes:
   shared-data:
+    driver: local

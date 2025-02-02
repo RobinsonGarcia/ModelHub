@@ -17,6 +17,7 @@ def process():
         result = {"service": SERVICE_NAME, "output": data.get("input", "").upper()}
 
         print(os.listdir())
+        print(config.DATA_DIR)
 
         img = Image.open(os.path.join(config.DATA_DIR, 'sample.jpeg'))
         np.savez_compressed(os.path.join(config.DATA_DIR, 'sample.npz'), arr=np.array(img))
